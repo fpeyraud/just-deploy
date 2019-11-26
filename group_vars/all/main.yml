@@ -1,0 +1,9 @@
+---
+site_version: "master"
+shared_dirs: ["web/app/uploads"]
+shared_files: ["web/.htaccess", ".env"]
+precompile_cmd: "true"
+after_upload_cmd: "composer update"
+sync_files: []
+before_finalize_cmd: "true"
+after_finalize_cmd: "sudo systemctl reload php7.2-fpm"

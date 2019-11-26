@@ -1,0 +1,73 @@
+---
+- name: Clone the project locally
+  local_action:
+    module: git
+    repo: "{{ site_repo }}"
+    dest: '{{ playbook_dir }}/tmp/repo'
+    version: "{{ site_version }}"
+    accept_hostkey: true
+- name: precompile command
+  delegate_to: 127.0.0.1
+  shell: "{{ precompile_cmd }}"
+  args:
+    chdir: '{{ playbook_dir }}/tmp/repo'
+- name: Initialize the deploy root and gather facts
+  deploy_helper:
+    path: '/var/www/{{ site_name }}/public_html'
+- name: Clone the project to the new release folder
+  git:
+    repo: "{{ site_repo }}"
+    dest: '{{ deploy_helper.new_release_path }}'
+    version: "{{ site_version }}"
+    accept_hostkey: true
+- name: Add an unfinished file, to allow cleanup on successful finalize
+  file:
+    path: '{{ deploy_helper.new_release_path }}/{{ deploy_helper.unfinished_filename }}'
+    state: touch
+- name: Copy local files from local repo scratch folder to target
+  synchronize:
+    dest: '{{ deploy_helper.new_release_path }}/{{ item }}'
+    src: '{{ playbook_dir }}/tmp/repo/{{ item }}'
+  with_items: "{{ sync_files }}"
+- name: Extra after-upload command
+  shell: "{{ after_upload_cmd }}"
+  args:
+    chdir: '{{ deploy_helper.new_release_path }}'
+- name: Create some folders in the shared folder
+  file:
+    path: '{{ deploy_helper.shared_path }}/{{ item }}'
+    state: directory
+  with_items: "{{ shared_dirs }}"
+- name: remove link origins from the new release
+  file:
+    path: '{{ deploy_helper.new_release_path }}/{{ item }}'
+    state: absent
+  with_items: "{{ shared_dirs }}"
+- name: Add symlinks from the new release to the shared folder
+  file:
+    path: '{{ deploy_helper.new_release_path }}/{{ item }}'
+    src: '{{ deploy_helper.shared_path }}/{{ item }}'
+    state: link
+    force: yes
+  with_items: "{{ shared_dirs }}"
+
+- name: Add symlinks from the new release to the shared folder
+  file:
+    path: '{{ deploy_helper.new_release_path }}/{{ item }}'
+    src: '{{ deploy_helper.shared_path }}/{{ item }}'
+    state: link
+    force: yes
+  with_items: "{{ shared_files }}"
+- name: Extra before-finalize command
+  shell: "{{ before_finalize_cmd }}"
+  args:
+    chdir: '{{ deploy_helper.new_release_path }}'
+- name: Finalize the deploy, removing the unfinished file and switching the symlink
+  deploy_helper:
+    path: '/var/www/{{ site_name }}/public_html'
+    release: '{{ deploy_helper.new_release }}'
+    state: finalize
+- name: Extra after-finalize command
+  shell: "{{ after_finalize_cmd }}"
+  args:
+    chdir: '{{ deploy_helper.new_release_path }}'

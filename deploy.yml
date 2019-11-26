@@ -1,0 +1,21 @@
+---
+- name: Deploy site from git repo
+  hosts: lamp:&{{ deploy_host }}
+  remote_user: "{{ deploy_user }}"
+  pre_tasks:
+    - name: Ensure site is valid
+      connection: local
+      fail:
+        msg: "Site `{{ site_name | default('') }}` is not valid. Please define the target site name"
+      when: site_name is not defined
+    - name: Ensure repo is valid
+      connection: local
+      fail:
+        msg: |
+          Invalid Git repository.
+          Ensure that your site's `site_repo` variable is defined and uses the SSH format (example: git@github.com:af83/repo.git)
+          actual '{{ site_repo | default('') }}'
+      when: site_repo is not defined or site_repo is not match("^ssh://.+@.+|.+@.+:.+")
+
+  roles:
+    - deploy

@@ -1,0 +1,50 @@
+FROM ubuntu:18.04
+
+RUN apt-get update && \
+    export DEBIAN_FRONTEND=noninteractive && \
+    apt-get install -y --no-install-recommends \
+      git \
+      openssh-client \
+      ca-certificates curl wget git gnupg apt-transport-https \
+      rsync locales && \
+    localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8 && \
+    wget -O - https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
+    echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list && \
+    mkdir -p /usr/share/man/man1/ && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ansible \
+        php7.2-cli \
+        php7.2-mbstring \
+        php7.2-xml \
+        php7.2-zip \
+        unzip \
+        build-essential \
+        libpng-dev \
+        openjdk-8-jdk-headless \
+        nodejs \
+        npm \
+        yarn \
+    && \
+    wget https://dl.google.com/go/go1.11.4.linux-amd64.tar.gz && \
+    tar -C /usr/local/ -zxf go1.11.4.linux-amd64.tar.gz && \
+    rm -f go1.11.4.linux-amd64.tar.gz && \
+    wget https://github.com/sass/dart-sass/releases/download/1.16.0/dart-sass-1.16.0-linux-x64.tar.gz && \
+    tar -C /usr/local/ -zxf dart-sass-1.16.0-linux-x64.tar.gz && \
+    rm -rf dart-sass-1.16.0-linux-x64.tar.gz && \
+    /usr/bin/npm install gulp-cli -g && /usr/bin/npm install gulp -D && \
+    apt-get clean && rm -rf /var/lib/apt/lists && \
+    php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
+    php -r "if (hash_file('sha384', 'composer-setup.php') === '93b54496392c062774670ac18b134c3b3a95e5a5e5c8f1a9f115f203b75bf9a129d5daa8ba6a13e2cc8a1da0806388a8') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" && \
+    php composer-setup.php && \
+    php -r "unlink('composer-setup.php');" && \
+    mv composer.phar /usr/local/bin/composer && \
+    mkdir /sources && mkdir /sources/deploy && mkdir /sources/deploy/tmp && cd /sources
+
+COPY . /sources/deploy
+
+ENV DEPLOY_USER=deploy ENV=dev PATH=/usr/local/sbin:/usr/local/bin:/usr/local/go/bin:/usr/local/dart-sass:/usr/sbin:/usr/bin:/sbin:/bin LANG=en_US.utf8 ANSIBLE_PARAMS=""
+
+WORKDIR /sources/deploy
+
+CMD ansible-playbook -e deploy_user=$DEPLOY_USER -e deploy_host=$ENV -e site_name=$SITE_NAME -e site_repo=$SITE_REPO $ANSIBLE_PARAMS -i hosts deploy.yml

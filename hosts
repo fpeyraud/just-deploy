@@ -1,0 +1,12 @@
+[lamp]
+lamp01-dev.af83.priv
+lamp01-prod.gandi.af83.priv
+
+[dev]
+lamp01-dev.af83.priv
+
+[staging]
+lamp01-dev.af83.priv
+
+[production]
+lamp01-prod.gandi.af83.priv
